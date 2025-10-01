@@ -1,4 +1,4 @@
-from List_lambda import *
+from List_absolute_lambda import *
 
 NIL = cons(None, None)
 
@@ -20,12 +20,17 @@ def show(v):
     return str(v)
 
 
-a = cons(1, cons("123", cons(3, NIL)))
-b = cons(-1, cons(1, cons("", NIL)))
-c = cons(a, cons(b, NIL))
-d = cons(NIL, cons(NIL, NIL))
-print(show(a))
-print(show(b))
-print(show(c))
-print(show(d))
+while True:
+    lst = NIL
+    for elem in reversed(input("enter list values: ").split()):
+        if elem == ":q":
+            exit(0)
+        try:
+            elem_ = eval(elem)
+            if isinstance(elem_, str) or isinstance(elem_, int):
+                elem = elem_
+        except Exception as _:
+            pass
+        lst = cons(elem, lst)
+    print(show(lst))
 
