@@ -1,4 +1,4 @@
-from List_absolute_lambda import *
+from Lists.List_absolute_lambda import *
 
 NIL = cons(None, None)
 
