@@ -16,11 +16,17 @@ class ourEn(Enum):
 
 class SF(ourEn): # special form
     QUOTE = 'quote'
+    EVAL = 'eval'
+    TYPEOF = 'typeof'
     CONS = 'cons'
     CAR = 'car'
     CDR = 'cdr'
-    DEF = 'def'
     IF = 'if'
+    DO = 'do'
+    PRINT = 'print'
+    READ = 'read'
+    SYMBOL = 'symbol'  # stateless calc
+    DEF = 'def'
 
 
 class BO(ourEn): # binary operation

@@ -144,6 +144,8 @@ def binop(op, a, b):  # apply binary operation to 2 args
             return a / b
         case BO.MOD:
             return a % b
+        case BO.STRCONCAT:
+            return repr(a) + repr(b)
 
 
 def binpred(op, a, b):  # apply binary predicat
@@ -163,18 +165,18 @@ def eval_naive(v):
         h = eval_naive(car(v))
         t = cdr(v)
         if isinstance(h, BO):
-            if h == BO.STRCONCAT:
-                a = car(t)
-                if t == NIL:
-                    raise SyntaxError
-                t = cdr(t)
-                b = car(t)
-                if t == NIL:
-                    return repr(eval_naive(a))
-                t = cdr(t)
-                if t != NIL:
-                    raise SyntaxError
-                return repr(eval_naive(a)) + repr(eval_naive(b))
+#             if h == BO.STRCONCAT:
+#                 a = car(t)
+#                 if t == NIL:
+#                     raise SyntaxError
+#                 t = cdr(t)
+#                 b = car(t)
+#                 if t == NIL:
+#                     return repr(eval_naive(a))
+#                 t = cdr(t)
+#                 if t != NIL:
+#                     raise SyntaxError
+#                 return repr(eval_naive(a)) + repr(eval_naive(b))
             try:
                 a, b = get_elems(t, 2)
                 return binop(h, eval_naive(a), eval_naive(b))
@@ -189,8 +191,12 @@ def eval_naive(v):
         elif isinstance(h, SF):
             match h:
                 case SF.QUOTE:
-                    a = get_elems(t, 1)
-                    return a[0]
+                    return get_elems(t, 1)[0]
+                case SF.EVAL:
+                    return eval_naive(eval_naive(get_elems(t, 1)[0]))
+                case SF.TYPEOF:
+                    a = eval_naive(get_elems(t, 1)[0])
+                    return str(a.__class__.__name__) if not isList(a) else 'List'
                 case SF.CONS:
                     a, b = get_elems(t, 2)
                     evaluated_b = eval_naive(b)
@@ -211,6 +217,31 @@ def eval_naive(v):
                     if a == NIL:
                         raise SyntaxError("NIL's elems???")  # config moment
                     return cdr(a)
+                case SF.IF:
+                    a, b, c = get_elems(t, 3)  # a ? b : c
+                    evaled_a = eval_naive(a)
+                    if type(evaled_a) is bool:
+                        return eval_naive(b) if evaled_a else eval_naive(c)
+                    raise SyntaxError(f'not boolean {a} in {show(v)}')  # TODO
+                case SF.DO:
+                    ev = NIL
+                    while not t == NIL:
+                        ev = eval_naive(car(t))
+                        t = cdr(t)
+                    return ev
+                case SF.PRINT:
+                    a = eval_naive(get_elems(t, 1)[0])
+                    print(repr(a), end='')
+                    return NIL
+                case SF.READ:
+                    get_elems(t, 0)
+                    s = input('\nreading: ')
+                    return prs(s)[0]
+                case SF.SYMBOL:
+                    a = eval_naive(get_elems(t, 1)[0])
+                    if not isinstance(a, str):
+                        raise SyntaxError('symbol not from string')
+                    return Symbol(a)
                 case _:
                     raise SyntaxError
         else:
@@ -238,7 +269,7 @@ def repl():
             print(suff)
             break
         if first in loaders:
-            filename = inp[len(first)].strip()
+            filename = inp[len(first):].strip()
             if not filename:
                 print(pref + 'Error: no filename provided.')
                 continue
@@ -246,8 +277,11 @@ def repl():
                 print(pref + f'Error: no such file "{filename}"')
                 continue
             with open(filename, 'r', encoding='utf-8') as f:  # TODO execution
-                print(pref + f'Content of {filename}:')
-                print(f.read())
+                print(f'Content of {filename}:')
+                s = f.read()
+                while s:
+                    res, s = prs(s)
+                    print(show(eval_naive(res)))
                 print(pref + f'End of {filename}.')
             continue
         try:
