@@ -10,6 +10,25 @@ class Symbol:
         return self._name
 
 
+class Env:
+    frame: dict = ...
+
+    def __init__(self):
+        self.frame = dict()
+
+    def add(self, k: Symbol, v) -> None:
+        # if k in dict.keys():  # config moment: immutible
+        #     raise SyntaxError
+        self.frame[k.name] = v
+    
+    def set(self, k: Symbol, v) -> None:
+        self.frame[k.name] = v
+
+    def get(self, k: Symbol):
+        # config moment: what if not k?
+        return self.frame[k.name] if k.name in self.frame.keys() else k
+
+
 class ourEn(Enum):
     '''to inherit'''
 
@@ -27,6 +46,7 @@ class SF(ourEn): # special form
     READ = 'read'
     SYMBOL = 'symbol'  # stateless calc
     DEF = 'def'
+    SET = 'set!'
 
 
 class BO(ourEn): # binary operation
@@ -41,4 +61,3 @@ class BP(ourEn): # binary predicate
     LT = '_<_'
     GT = '_>_'
     EQ = '_==_'
-

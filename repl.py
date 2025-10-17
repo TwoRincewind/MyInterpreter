@@ -1,37 +1,42 @@
-import re
-import os
+import re, os, sys
 from string import whitespace
 
 from Lists.List_absolute_lambda import car, cdr, cons, isList
-from Tokens import ourEn, SF, BO, BP, Symbol
+from Tokens import ourEn, SF, BO, BP, Symbol, Env
 
 
 NIL = cons(None, None)
+ENV = Env()
 
 
-def show(v: tuple) -> str:
-    if v is None:
-        return ''
-    if isList(v):
+def show(obj) -> str:
+    '''
+    return showable string representation of obj
+    how it could be passed to our parser
+    '''
+    if obj is None:
+        obj = NIL
+        # return ''
+    if isList(obj):
         s = ''
         first = True
-        while v != NIL:
+        while obj != NIL:
             if first:
                 first = False
             else:
                 s += ' '
-            s += show(car(v))
-            v = cdr(v)
+            s += show(car(obj))
+            obj = cdr(obj)
         return f'({s})'
-    elif isinstance(v, str):
-        return f'"{v}"'
-    elif isinstance(v, ourEn):
-        return v.value
-    elif isinstance(v, Symbol):
-        return v.name
-    elif isinstance(v, bool):
-        return 'true' if v else 'false'
-    return str(v)
+    elif isinstance(obj, str):
+        return f'"{obj}"'
+    elif isinstance(obj, ourEn):
+        return obj.value
+    elif isinstance(obj, Symbol):
+        return obj.name
+    elif isinstance(obj, bool):
+        return 'true' if obj else 'false'
+    return str(obj)
 
 
 MEANINGFUL = '"();\''
@@ -39,6 +44,9 @@ IGNORED = whitespace + ','
 
 
 def processString(s: str) -> str:
+    '''
+    remove all the blank characters, comments
+    '''
     s = s.lstrip(IGNORED)
     while s and s[0] == ';':  # comments handling
         line_end: int = s.find('\n')
@@ -49,6 +57,9 @@ def processString(s: str) -> str:
 
 
 def findpref(s: str, breakers: str = IGNORED + MEANINGFUL) -> str:
+    '''
+    find meaningful prefix
+    '''
     pattern = rf'^[^{breakers}]*'
     match = re.match(pattern, s)
     if match:
@@ -56,14 +67,15 @@ def findpref(s: str, breakers: str = IGNORED + MEANINGFUL) -> str:
     return ''
 
 
-def parse_token(token: str) -> str | ourEn:
+def parse_token(token: str):
+    '''
+    tryes to recognize given token
+    '''
     for en in [SF, BO, BP]:
         if token in en:
             return en(token)
-    if token == 'true':
-        return True
-    if token == 'false':
-        return False
+    if token in ['true', 'false']:
+        return token == 'true'
     try:
         return int(token)
     except ValueError:
@@ -74,11 +86,14 @@ def parse_token(token: str) -> str | ourEn:
         except ValueError:
             return Symbol(token)
 
-
-def prs(s: str) -> tuple:  # (ast, remainder of s), ast = None if nothing was parsed
+# string -> ast, remainder of string
+def prs(s: str) -> tuple:
+    '''
+    parses one token
+    '''
     s = processString(s)
     if not s:
-        return (None, s)
+        return (NIL, s)
     match s[0]:
         case '"':  # string
             matching = s.find('"', 1)
@@ -111,7 +126,7 @@ def prs(s: str) -> tuple:  # (ast, remainder of s), ast = None if nothing was pa
             return (cons(SF.QUOTE, cons(v, NIL)), rem)
         case _:  # maybe we can find token
             first = findpref(s)
-            return (parse_token(first) if first else None, s[len(first):])
+            return (parse_token(first) if first else NIL, s[len(first):])
 
 
 EVAL_NIL = lambda: NIL
@@ -159,24 +174,26 @@ def binpred(op, a, b):  # apply binary predicat
 
 
 def eval_naive(v):
-    if isList(v):  # call car with cdr as args
+    if isinstance(v, Symbol):
+        return ENV.get(v)
+    elif isList(v):  # call car with cdr as args
         if v == NIL:
             return EVAL_NIL()
         h = eval_naive(car(v))
         t = cdr(v)
         if isinstance(h, BO):
-#             if h == BO.STRCONCAT:
-#                 a = car(t)
-#                 if t == NIL:
-#                     raise SyntaxError
-#                 t = cdr(t)
-#                 b = car(t)
-#                 if t == NIL:
-#                     return repr(eval_naive(a))
-#                 t = cdr(t)
-#                 if t != NIL:
-#                     raise SyntaxError
-#                 return repr(eval_naive(a)) + repr(eval_naive(b))
+            # if h == BO.STRCONCAT:
+            #     a = car(t)
+            #     if t == NIL:
+            #         raise SyntaxError
+            #     t = cdr(t)
+            #     b = car(t)
+            #     if t == NIL:
+            #         return repr(eval_naive(a))
+            #     t = cdr(t)
+            #     if t != NIL:
+            #         raise SyntaxError
+            #     return repr(eval_naive(a)) + repr(eval_naive(b))
             try:
                 a, b = get_elems(t, 2)
                 return binop(h, eval_naive(a), eval_naive(b))
@@ -196,7 +213,7 @@ def eval_naive(v):
                     return eval_naive(eval_naive(get_elems(t, 1)[0]))
                 case SF.TYPEOF:
                     a = eval_naive(get_elems(t, 1)[0])
-                    return str(a.__class__.__name__) if not isList(a) else 'List'
+                    return 'List' if isList(a) else str(a.__class__.__name__)
                 case SF.CONS:
                     a, b = get_elems(t, 2)
                     evaluated_b = eval_naive(b)
@@ -242,6 +259,18 @@ def eval_naive(v):
                     if not isinstance(a, str):
                         raise SyntaxError('symbol not from string')
                     return Symbol(a)
+                case SF.DEF:
+                    a, b = get_elems(t, 2)
+                    if isinstance(a, Symbol):
+                        ENV.add(a, eval_naive(b))
+                        return NIL
+                    raise SyntaxError('cannot define non-symbol')
+                case SF.SET:
+                    a, b = get_elems(t, 2)
+                    if isinstance(a, Symbol):
+                        ENV.set(a, eval_naive(b))
+                        return NIL
+                    raise SyntaxError('cannot set non-Symbol')
                 case _:
                     raise SyntaxError
         else:
@@ -250,21 +279,43 @@ def eval_naive(v):
 
 
 def repl():
+    def eval_local(s, load=False):
+        try:
+            res = ''
+            while s:  # parse every object
+                res, s = prs(s)
+                res = eval_naive(res)
+                # to_print = show(eval_naive(res))
+                # if not load:  # and to_print:
+                #     print(to_print)
+            return res
+        except Exception as e:
+            while e:
+                print(e)
+                e = e.__cause__
+                # \ if e.__cause__ is not None else e.__context__
+
     pref, suff = '>>> ', 'exiting REPL...'
     strs = [':q :quit :exit exit quit', ':l :load']
     exiters, loaders = map(lambda s: s.split(), strs)
+    prev, inp = '', ''
+    if not sys.stdin.isatty():
+        print(show(eval_local(sys.stdin.read(), load=True)))
+        print('input exhausted,', suff)
+        return
     while True:
+        prev = inp
         try:
             inp = input(pref).strip()
         except KeyboardInterrupt:
             print(suff)
             break
-        except EOFError:  # when started with file input
-            print('input exhausted, exiting REPL...')
-            break
         if not inp:
             continue
         first = findpref(inp, whitespace)
+        if first == ':':
+            inp = prev
+            first = findpref(inp, whitespace)
         if first in exiters:
             print(suff)
             break
@@ -276,25 +327,11 @@ def repl():
             if not os.path.isfile(filename):
                 print(pref + f'Error: no such file "{filename}"')
                 continue
-            with open(filename, 'r', encoding='utf-8') as f:  # TODO execution
-                print(f'Content of {filename}:')
-                s = f.read()
-                while s:
-                    res, s = prs(s)
-                    print(show(eval_naive(res)))
-                print(pref + f'End of {filename}.')
+            with open(filename, 'r', encoding='utf-8') as f:
+                eval_local(f.read(), load=True)
+                print()
             continue
-        try:
-            while inp:  # parse multiple objects on single input line
-                res, inp = prs(inp)
-                to_print = show(eval_naive(res))
-                if to_print:
-                    print(to_print)
-        except Exception as e:
-            while e:  # and e not in seen:
-                print(e)
-                # print(f"{type(e).__name__}: {e}")
-                e = e.__cause__  # if e.__cause__ is not None else e.__context__
+        print(show(eval_local(inp)))
 
 
 repl()
