@@ -1,13 +1,5 @@
 from enum import Enum
-
-
-class Symbol:
-    _name: str = ...
-    def __init__(self, name):
-        self._name = name
-    @property
-    def name(self):
-        return self._name
+from Symbols.Symbol_string import symname
 
 
 class Env:
@@ -16,17 +8,17 @@ class Env:
     def __init__(self):
         self.frame = dict()
 
-    def add(self, k: Symbol, v) -> None:
+    def add(self, k, v) -> None:
         # if k in dict.keys():  # config moment: immutible
         #     raise SyntaxError
-        self.frame[k.name] = v
+        self.frame[symname(k)] = v
     
-    def set(self, k: Symbol, v) -> None:
-        self.frame[k.name] = v
+    def set(self, k, v) -> None:
+        self.frame[symname(k)] = v
 
-    def get(self, k: Symbol):
+    def get(self, k):
         # config moment: what if not k?
-        return self.frame[k.name] if k.name in self.frame.keys() else k
+        return self.frame[symname(k)] if symname(k) in self.frame.keys() else k
 
 
 class ourEn(Enum):
@@ -56,6 +48,7 @@ class BO(ourEn): # binary operation
     DIV = '_/_'
     MOD = '_%_'
     STRCONCAT = '_++_'
+
 
 class BP(ourEn): # binary predicate
     LT = '_<_'

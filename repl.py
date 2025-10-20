@@ -2,7 +2,8 @@ import re, os, sys
 from string import whitespace
 
 from Lists.List_absolute_lambda import car, cdr, cons, isList
-from Tokens import ourEn, SF, BO, BP, Symbol, Env
+from Symbols.Symbol_string import symbol, symname, isSymbol
+from Tokens import ourEn, SF, BO, BP, Env
 
 
 NIL = cons(None, None)
@@ -32,8 +33,8 @@ def show(obj) -> str:
         return f'"{obj}"'
     elif isinstance(obj, ourEn):
         return obj.value
-    elif isinstance(obj, Symbol):
-        return obj.name
+    elif isSymbol(obj):
+        return symname(obj)
     elif isinstance(obj, bool):
         return 'true' if obj else 'false'
     return str(obj)
@@ -56,11 +57,11 @@ def processString(s: str) -> str:
     return s
 
 
-def findpref(s: str, breakers: str = IGNORED + MEANINGFUL) -> str:
+def findpref(s: str, separators: str = IGNORED + MEANINGFUL) -> str:
     '''
     find meaningful prefix
     '''
-    pattern = rf'^[^{breakers}]*'
+    pattern = rf'^[^{separators}]*'
     match = re.match(pattern, s)
     if match:
         return match.group(0)
@@ -80,11 +81,11 @@ def parse_token(token: str):
         return int(token)
     except ValueError:
         if token == 'inf':
-            return Symbol(token)
+            return symbol(token)
         try:
             return float(token)
         except ValueError:
-            return Symbol(token)
+            return symbol(token)
 
 # string -> ast, remainder of string
 def prs(s: str) -> tuple:
@@ -174,7 +175,7 @@ def binpred(op, a, b):  # apply binary predicat
 
 
 def eval_naive(v):
-    if isinstance(v, Symbol):
+    if isSymbol(v):
         return ENV.get(v)
     elif isList(v):  # call car with cdr as args
         if v == NIL:
@@ -258,16 +259,16 @@ def eval_naive(v):
                     a = eval_naive(get_elems(t, 1)[0])
                     if not isinstance(a, str):
                         raise SyntaxError('symbol not from string')
-                    return Symbol(a)
+                    return symbol(a)
                 case SF.DEF:
                     a, b = get_elems(t, 2)
-                    if isinstance(a, Symbol):
+                    if isSymbol(a):
                         ENV.add(a, eval_naive(b))
                         return NIL
                     raise SyntaxError('cannot define non-symbol')
                 case SF.SET:
                     a, b = get_elems(t, 2)
-                    if isinstance(a, Symbol):
+                    if isSymbol(a):
                         ENV.set(a, eval_naive(b))
                         return NIL
                     raise SyntaxError('cannot set non-Symbol')
@@ -300,8 +301,9 @@ def repl():
     exiters, loaders = map(lambda s: s.split(), strs)
     prev, inp = '', ''
     if not sys.stdin.isatty():
-        print(show(eval_local(sys.stdin.read(), load=True)))
-        print('input exhausted,', suff)
+        eval_local(sys.stdin.read(), load=True)
+        # print(show())
+        print('\ninput exhausted,', suff)
         return
     while True:
         prev = inp
