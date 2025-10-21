@@ -3,11 +3,11 @@ from string import whitespace
 
 from Lists.List_absolute_lambda import car, cdr, cons, isList
 from Symbols.Symbol_string import symbol, symname, isSymbol
-from Tokens import ourEn, SF, BO, BP, Env
+from Tokens import ourEn, SF, BO, BP, Env, Lambda
 
 
 NIL = cons(None, None)
-ENV = Env()
+ENV = Env(None)
 
 
 def show(obj) -> str:
@@ -29,14 +29,16 @@ def show(obj) -> str:
             s += show(car(obj))
             obj = cdr(obj)
         return f'({s})'
+    elif isSymbol(obj):
+        return symname(obj)
     elif isinstance(obj, str):
         return f'"{obj}"'
     elif isinstance(obj, ourEn):
         return obj.value
-    elif isSymbol(obj):
-        return symname(obj)
     elif isinstance(obj, bool):
         return 'true' if obj else 'false'
+    elif isinstance(obj, Lambda):
+        return f'({show(SF.LAMBDA)} {show(obj.args)} {show(obj.body)})'
     return str(obj)
 
 
@@ -174,36 +176,24 @@ def binpred(op, a, b):  # apply binary predicat
             return a == b
 
 
-def eval_naive(v):
+def eval_naive(v, e):
     if isSymbol(v):
-        return ENV.get(v)
+        return e.get(v)
     elif isList(v):  # call car with cdr as args
         if v == NIL:
             return EVAL_NIL()
-        h = eval_naive(car(v))
+        h = eval_naive(car(v), e)
         t = cdr(v)
         if isinstance(h, BO):
-            # if h == BO.STRCONCAT:
-            #     a = car(t)
-            #     if t == NIL:
-            #         raise SyntaxError
-            #     t = cdr(t)
-            #     b = car(t)
-            #     if t == NIL:
-            #         return repr(eval_naive(a))
-            #     t = cdr(t)
-            #     if t != NIL:
-            #         raise SyntaxError
-            #     return repr(eval_naive(a)) + repr(eval_naive(b))
             try:
                 a, b = get_elems(t, 2)
-                return binop(h, eval_naive(a), eval_naive(b))
+                return binop(h, eval_naive(a, e), eval_naive(b, e))
             except SyntaxError as e:
                 raise SyntaxError(f'wrong args for BO: {show(v)}') from e
         elif isinstance(h, BP):
             try:
                 a, b = get_elems(t, 2)
-                return binpred(h, eval_naive(a), eval_naive(b))
+                return binpred(h, eval_naive(a, e), eval_naive(b, e))
             except SyntaxError as e:
                 raise SyntaxError(f'wrong args for BP: {show(v)}') from e
         elif isinstance(h, SF):
@@ -211,25 +201,25 @@ def eval_naive(v):
                 case SF.QUOTE:
                     return get_elems(t, 1)[0]
                 case SF.EVAL:
-                    return eval_naive(eval_naive(get_elems(t, 1)[0]))
+                    return eval_naive(eval_naive(get_elems(t, 1)[0], e), e)
                 case SF.TYPEOF:
-                    a = eval_naive(get_elems(t, 1)[0])
+                    a = eval_naive(get_elems(t, 1)[0], e)
                     return 'List' if isList(a) else str(a.__class__.__name__)
                 case SF.CONS:
                     a, b = get_elems(t, 2)
-                    evaluated_b = eval_naive(b)
+                    evaluated_b = eval_naive(b, e)
                     if not isList(evaluated_b):
                         raise SyntaxError
-                    return cons(eval_naive(a), evaluated_b)
+                    return cons(eval_naive(a, e), evaluated_b)
                 case SF.CAR:
-                    a = eval_naive(get_elems(t, 1)[0])
+                    a = eval_naive(get_elems(t, 1)[0], e)
                     if not isList(a):
                         return a  # config moment
                     if a == NIL:
                         raise SyntaxError("NIL's head???")  # config moment
                     return car(a)
                 case SF.CDR:
-                    a = eval_naive(get_elems(t, 1)[0])
+                    a = eval_naive(get_elems(t, 1)[0], e)
                     if not isList(a):
                         return NIL  # config moment
                     if a == NIL:
@@ -237,18 +227,18 @@ def eval_naive(v):
                     return cdr(a)
                 case SF.IF:
                     a, b, c = get_elems(t, 3)  # a ? b : c
-                    evaled_a = eval_naive(a)
+                    evaled_a = eval_naive(a, e)
                     if type(evaled_a) is bool:
-                        return eval_naive(b) if evaled_a else eval_naive(c)
+                        return eval_naive(b, e) if evaled_a else eval_naive(c, e)
                     raise SyntaxError(f'not boolean {a} in {show(v)}')  # TODO
                 case SF.DO:
                     ev = NIL
                     while not t == NIL:
-                        ev = eval_naive(car(t))
+                        ev = eval_naive(car(t), e)
                         t = cdr(t)
                     return ev
                 case SF.PRINT:
-                    a = eval_naive(get_elems(t, 1)[0])
+                    a = eval_naive(get_elems(t, 1)[0], e)
                     print(repr(a), end='')
                     return NIL
                 case SF.READ:
@@ -256,24 +246,39 @@ def eval_naive(v):
                     s = input('\nreading: ')
                     return prs(s)[0]
                 case SF.SYMBOL:
-                    a = eval_naive(get_elems(t, 1)[0])
+                    a = eval_naive(get_elems(t, 1)[0], e)
                     if not isinstance(a, str):
                         raise SyntaxError('symbol not from string')
                     return symbol(a)
                 case SF.DEF:
                     a, b = get_elems(t, 2)
                     if isSymbol(a):
-                        ENV.add(a, eval_naive(b))
+                        e.add(a, eval_naive(b, e))
                         return NIL
                     raise SyntaxError('cannot define non-symbol')
                 case SF.SET:
                     a, b = get_elems(t, 2)
                     if isSymbol(a):
-                        ENV.set(a, eval_naive(b))
+                        e.set(a, eval_naive(b, e))
                         return NIL
                     raise SyntaxError('cannot set non-Symbol')
+                case SF.LAMBDA:
+                    a, b = get_elems(t, 2)
+                    if isList(a):
+                        return Lambda(a, b, e)
+                    raise SyntaxError(f'wrong args form: {show(a)}')
                 case _:
                     raise SyntaxError
+        elif isinstance(h, Lambda):
+            lambda_e = Env(h.env)
+            a = h.args
+            while a != NIL and t != NIL:
+                lambda_e.add(car(a), eval_naive(car(t), e))
+                a = cdr(a)
+                t = cdr(t)
+            if a != NIL: # TODO a < t
+                return Lambda(a, h.body, lambda_e)
+            return eval_naive(h.body, lambda_e)
         else:
             raise SyntaxError('wrong head form')
     return v
@@ -285,12 +290,12 @@ def repl():
             res = ''
             while s:  # parse every object
                 res, s = prs(s)
-                res = eval_naive(res)
-                # to_print = show(eval_naive(res))
+                res = eval_naive(res, ENV)
+                # to_print = show(eval_naive(res, ENV))
                 # if not load:  # and to_print:
                 #     print(to_print)
             return res
-        except Exception as e:
+        except SyntaxError as e:
             while e:
                 print(e)
                 e = e.__cause__
