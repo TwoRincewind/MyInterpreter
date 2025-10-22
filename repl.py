@@ -272,8 +272,11 @@ def eval_naive(v, e):
         elif isinstance(h, Lambda):
             lambda_e = Env(h.env)
             a = h.args
+            if a == NIL and t != NIL:
+                raise SyntaxError("more than zero args for lambda")
             while a != NIL and t != NIL:
-                lambda_e.add(car(a), eval_naive(car(t), e))
+                arg = t if cdr(a) == NIL and cdr(t) != NIL else eval_naive(car(t), e)
+                lambda_e.add(car(a), arg)
                 a = cdr(a)
                 t = cdr(t)
             if a != NIL: # TODO a < t
