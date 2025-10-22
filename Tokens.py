@@ -1,5 +1,5 @@
 from enum import Enum
-from Symbols.Symbol_string import symname
+from Symbols.Symbol_string import symkey
 
 
 class Env:
@@ -13,10 +13,10 @@ class Env:
     def add(self, k, v) -> None:
         # if k in dict.keys():  # config moment: immutible
         #     raise SyntaxError
-        self.frame[symname(k)] = v
+        self.frame[symkey(k)] = v
 
     def set(self, k, v) -> None:
-        k = symname(k)
+        k = symkey(k)
         e = self
         while e:
             if k in e.frame:
@@ -26,7 +26,7 @@ class Env:
         raise SyntaxError(f"no such symbol: {k}")
 
     def get(self, k):
-        n = symname(k)
+        n = symkey(k)
         e = self
         while e:
             if n in e.frame:
@@ -44,6 +44,14 @@ class Lambda:
         self.args = args
         self.body = body
         self.env = env
+
+
+class Dambda:
+    args = ...
+    body = ...
+    def __init__(self, args, body):
+        self.args = args
+        self.body = body
 
 
 class ourEn(Enum):
@@ -65,6 +73,7 @@ class SF(ourEn): # special form
     DEF = 'def'
     SET = 'set!'
     LAMBDA = 'lambda'
+    DAMBDA = 'dambda'
 
 
 class BO(ourEn): # binary operation

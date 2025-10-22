@@ -3,7 +3,7 @@ from string import whitespace
 
 from Lists.List_absolute_lambda import car, cdr, cons, isList
 from Symbols.Symbol_string import symbol, symname, isSymbol
-from Tokens import ourEn, SF, BO, BP, Env, Lambda
+from Tokens import ourEn, SF, BO, BP, Env, Lambda, Dambda
 
 
 NIL = cons(None, None)
@@ -39,6 +39,8 @@ def show(obj) -> str:
         return 'true' if obj else 'false'
     elif isinstance(obj, Lambda):
         return f'({show(SF.LAMBDA)} {show(obj.args)} {show(obj.body)})'
+    elif isinstance(obj, Dambda):
+        return f'({show(SF.DAMBDA)} {show(obj.args)} {show(obj.body)})'
     return str(obj)
 
 
@@ -266,7 +268,12 @@ def eval_naive(v, e):
                     a, b = get_elems(t, 2)
                     if isList(a):
                         return Lambda(a, b, e)
-                    raise SyntaxError(f'wrong args form: {show(a)}')
+                    raise SyntaxError(f'wrong args form for lambda: {show(a)}')
+                case SF.DAMBDA:
+                    a, b = get_elems(t, 2)
+                    if isList(a):
+                        return Dambda(a, b)
+                    raise SyntaxError(f'wrong args form for dambda: {show(a)}')
                 case _:
                     raise SyntaxError
         elif isinstance(h, Lambda):
@@ -279,9 +286,22 @@ def eval_naive(v, e):
                 lambda_e.add(car(a), arg)
                 a = cdr(a)
                 t = cdr(t)
-            if a != NIL: # TODO a < t
+            if a != NIL:
                 return Lambda(a, h.body, lambda_e)
             return eval_naive(h.body, lambda_e)
+        elif isinstance(h, Dambda):
+            dambda_e = e
+            a = h.args
+            if a == NIL and t != NIL:
+                raise SyntaxError("more than zero args for dambda")
+            while a != NIL and t != NIL:
+                arg = t if cdr(a) == NIL and cdr(t) != NIL else eval_naive(car(t), e)
+                dambda_e.add(car(a), arg)
+                a = cdr(a)
+                t = cdr(t)
+            if a != NIL:
+                return Lambda(a, h.body, dambda_e)
+            return eval_naive(h.body, dambda_e)
         else:
             raise SyntaxError('wrong head form')
     return v
