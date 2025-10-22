@@ -3,7 +3,7 @@ from string import whitespace
 
 from Lists.List_absolute_lambda import car, cdr, cons, isList
 from Symbols.Symbol_string import symbol, symname, isSymbol
-from Tokens import ourEn, SF, BO, BP, Env, Lambda, Dambda
+from Tokens import ourEn, SF, BO, BP, Env, Lambda, Dambda, Macro
 
 
 NIL = cons(None, None)
@@ -41,6 +41,8 @@ def show(obj) -> str:
         return f'({show(SF.LAMBDA)} {show(obj.args)} {show(obj.body)})'
     elif isinstance(obj, Dambda):
         return f'({show(SF.DAMBDA)} {show(obj.args)} {show(obj.body)})'
+    elif isinstance(obj, Macro):
+        return f'({show(SF.MACRO)} {show(obj.args)} {show(obj.body)})'
     return str(obj)
 
 
@@ -274,6 +276,11 @@ def eval_naive(v, e):
                     if isList(a):
                         return Dambda(a, b)
                     raise SyntaxError(f'wrong args form for dambda: {show(a)}')
+                case SF.MACRO:
+                    a, b = get_elems(t, 2)
+                    if isList(a):
+                        return Macro(a, b)
+                    raise SyntaxError(f'wrong args form for macro: {show(a)}')
                 case _:
                     raise SyntaxError
         elif isinstance(h, Lambda):
@@ -290,7 +297,7 @@ def eval_naive(v, e):
                 return Lambda(a, h.body, lambda_e)
             return eval_naive(h.body, lambda_e)
         elif isinstance(h, Dambda):
-            dambda_e = e
+            dambda_e = Env(e)
             a = h.args
             if a == NIL and t != NIL:
                 raise SyntaxError("more than zero args for dambda")
@@ -302,9 +309,33 @@ def eval_naive(v, e):
             if a != NIL:
                 return Lambda(a, h.body, dambda_e)
             return eval_naive(h.body, dambda_e)
+        elif isinstance(h, Macro):
+            d = dict()
+            a = h.args
+            if a == NIL and t != NIL:
+                raise SyntaxError("more than zero args for macro")
+            while a != NIL and t != NIL:
+                d[car(a)] = car(t)
+                a = cdr(a)
+                t = cdr(t)
+            expanded = macro_expand(h.body, d)
+            print(show(expanded), file=sys.stderr)
+            return eval_naive(expanded, e)
         else:
-            raise SyntaxError('wrong head form')
+            raise SyntaxError(f'wrong head form: {show(h)}')
     return v
+
+
+def macro_expand(body, d):
+    if isSymbol(body):
+        if body in d:
+            return d[body]  # autoquote
+        return body
+    if isList(body):
+        if body == NIL:
+            return NIL
+        return cons(macro_expand(car(body), d), macro_expand(cdr(body), d))
+    return body
 
 
 def repl():

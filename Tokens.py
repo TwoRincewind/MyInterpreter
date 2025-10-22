@@ -1,5 +1,5 @@
 from enum import Enum
-from Symbols.Symbol_string import symkey
+from Symbols.Symbol_string import symkey, symname
 
 
 class Env:
@@ -11,6 +11,7 @@ class Env:
         self.parent = parent
 
     def add(self, k, v) -> None:
+        print(self.frame, symname(k), v)
         # if k in dict.keys():  # config moment: immutible
         #     raise SyntaxError
         self.frame[symkey(k)] = v
@@ -54,6 +55,14 @@ class Dambda:
         self.body = body
 
 
+class Macro:
+    args = ...
+    body = ...
+    def __init__(self, args, body):
+        self.args = args
+        self.body = body
+
+
 class ourEn(Enum):
     '''to inherit'''
 
@@ -74,6 +83,7 @@ class SF(ourEn): # special form
     SET = 'set!'
     LAMBDA = 'lambda'
     DAMBDA = 'dambda'
+    MACRO = 'macro'
 
 
 class BO(ourEn): # binary operation
