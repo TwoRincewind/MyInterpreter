@@ -11,7 +11,7 @@ class Env:
         self.parent = parent
 
     def add(self, k, v) -> None:
-        print(self.frame, symname(k), v)
+        # print(self.frame, symname(k), v)
         # if k in dict.keys():  # config moment: immutible
         #     raise SyntaxError
         self.frame[symkey(k)] = v
