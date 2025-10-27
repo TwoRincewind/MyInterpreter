@@ -2,7 +2,7 @@ import re, os, sys
 from string import whitespace
 
 from Lists.List_absolute_lambda import car, cdr, cons, isList
-from Symbols.Symbol_string import symbol, symname, isSymbol
+from Symbols.Symbol_string import symbol, symname, isSymbol, symkey
 from Tokens import ourEn, SF, BO, BP, Env, Lambda, Dambda, Macro
 
 
@@ -289,6 +289,7 @@ def eval_naive(v, e):
             if a == NIL and t != NIL:
                 raise SyntaxError("more than zero args for lambda")
             while a != NIL and t != NIL:
+                # TODO eval
                 arg = t if cdr(a) == NIL and cdr(t) != NIL else eval_naive(car(t), e)
                 lambda_e.add(car(a), arg)
                 a = cdr(a)
@@ -315,11 +316,12 @@ def eval_naive(v, e):
             if a == NIL and t != NIL:
                 raise SyntaxError("more than zero args for macro")
             while a != NIL and t != NIL:
-                d[car(a)] = car(t)
+                d[symkey(car(a))] = car(t)
                 a = cdr(a)
                 t = cdr(t)
             expanded = macro_expand(h.body, d)
-            print(show(expanded), file=sys.stderr)
+            if a != NIL:
+                return Macro(a, expanded)
             return eval_naive(expanded, e)
         else:
             raise SyntaxError(f'wrong head form: {show(h)}')
@@ -328,8 +330,8 @@ def eval_naive(v, e):
 
 def macro_expand(body, d):
     if isSymbol(body):
-        if body in d:
-            return d[body]  # autoquote
+        if symkey(body) in d:
+            return d[symkey(body)]  # autoquote
         return body
     if isList(body):
         if body == NIL:
