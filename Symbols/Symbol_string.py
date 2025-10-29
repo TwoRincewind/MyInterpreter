@@ -11,4 +11,4 @@ def symkey(sym: str) -> str:
 
 
 def isSymbol(obj) -> bool:
-    return isinstance(obj, str) and obj[0] == pref
+    return isinstance(obj, str) and obj and obj[0] == pref

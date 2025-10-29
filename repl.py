@@ -281,6 +281,9 @@ def eval_naive(v, e):
                     if isList(a):
                         return Macro(a, b)
                     raise SyntaxError(f'wrong args form for macro: {show(a)}')
+                case SF.RAISE:
+                    cause = eval_naive(get_elems(t, 1)[0], e)
+                    raise RuntimeError(repr(cause))
                 case _:
                     raise SyntaxError
         elif isinstance(h, Lambda):
@@ -288,16 +291,31 @@ def eval_naive(v, e):
             a = h.args
             if a == NIL and t != NIL:
                 raise SyntaxError("more than zero args for lambda")
-            while a != NIL and t != NIL:
-                # TODO eval
-                arg = t if cdr(a) == NIL and cdr(t) != NIL else eval_naive(car(t), e)
-                lambda_e.add(car(a), arg)
-                a = cdr(a)
-                t = cdr(t)
-            if a != NIL:
+            while a != NIL:  # and t != NIL:
+                ca = car(a)
+                if symname(ca) == '.':
+                    ca = get_elems(a, 2)[1]
+                    arr = []
+                    while t != NIL:
+                        arr.append(eval_naive(car(t), e))
+                        t = cdr(t)
+                    arg = NIL
+                    for elem in reversed(arr):
+                        arg = cons(elem, arg)
+                    a = NIL
+                else:
+                    if t == NIL:
+                        break
+                    arg = eval_naive(car(t), e)
+                    a = cdr(a)
+                    t = cdr(t)
+                lambda_e.add(ca, arg)
+            if t != NIL:
+                raise SyntaxError(f'extra args {show(t)}\nfor not variable lambda:{show(h)}')
+            elif a != NIL:
                 return Lambda(a, h.body, lambda_e)
             return eval_naive(h.body, lambda_e)
-        elif isinstance(h, Dambda):
+        elif isinstance(h, Dambda):  # TODO same as lambda
             dambda_e = Env(e)
             a = h.args
             if a == NIL and t != NIL:
@@ -315,10 +333,22 @@ def eval_naive(v, e):
             a = h.args
             if a == NIL and t != NIL:
                 raise SyntaxError("more than zero args for macro")
-            while a != NIL and t != NIL:
-                d[symkey(car(a))] = car(t)
-                a = cdr(a)
-                t = cdr(t)
+            while a != NIL:  # and t != NIL:
+                ca = car(a)
+                if symname(ca) == '.':
+                    ca = get_elems(a, 2)[1]
+                    arg = t
+                    a = NIL
+                    t = NIL
+                else:
+                    if t == NIL:
+                        break
+                    arg = car(t)
+                    a = cdr(a)
+                    t = cdr(t)
+                d[symkey(ca)] = arg
+            if t != NIL:
+                raise SyntaxError(f'extra args {show(t)}\nfor not variable macro:{show(h)}')
             expanded = macro_expand(h.body, d)
             if a != NIL:
                 return Macro(a, expanded)
@@ -356,6 +386,10 @@ def repl():
                 print(e)
                 e = e.__cause__
                 # \ if e.__cause__ is not None else e.__context__
+        except Exception as e:
+            while e:
+                print(e)
+                e = e.__cause__
 
     pref, suff = '>>> ', 'exiting REPL...'
     strs = [':q :quit :exit exit quit', ':l :load']

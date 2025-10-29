@@ -84,6 +84,7 @@ class SF(ourEn): # special form
     LAMBDA = 'lambda'
     DAMBDA = 'dambda'
     MACRO = 'macro'
+    RAISE = 'raise'
 
 
 class BO(ourEn): # binary operation
@@ -98,4 +99,4 @@ class BO(ourEn): # binary operation
 class BP(ourEn): # binary predicate
     LT = '_<_'
     GT = '_>_'
-    EQ = '_==_'
+    EQ = '_=_'
