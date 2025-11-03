@@ -417,6 +417,14 @@ def repl():
             print_exception(e)
 
     pref, suf = '>> ', 'exiting REPL...'
+    path_stdlib = 'stdlib.lsp'
+    if not path_stdlib:
+        print(pref + 'Error: no filename provided.')
+    if not os.path.isfile(path_stdlib):
+        print(pref + f'Error: no such file "{path_stdlib}"')
+    with open(path_stdlib, 'r', encoding='utf-8') as f:
+        eval_local(f.read(), load=True)
+        print()
     strs = [':q :quit :exit exit quit', ':l :load']
     exiters, loaders = map(lambda s: s.split(), strs)
     prev, inp = '', ''
