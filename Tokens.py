@@ -1,5 +1,6 @@
 from enum import Enum
-from Symbols.Symbol_string import symkey, symname
+from Symbols.Symbol_string import symbol, symname, isSymbol, symkey
+# from Symbols.Symbol_string import symkey, symname
 
 
 class Env:

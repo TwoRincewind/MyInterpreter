@@ -22,7 +22,7 @@
 (defun reduce (f a l) (if (nil? l) a (reduce f (f a (car l)) (cdr l))))
 (defun foldr  (f a l) (if (nil? l) a (f (foldr f a (cdr l)) (car l))))
 
-(defun + (. args) (reduce _+_ 0 args))
+(defun + (. args) (if (nil? args) 0 (reduce _+_ (car args) (cdr args))))
 ; (+ 1 2 3 4) = (_+_ 1 (_+_ 2 (_+_ 3 4)))
 (defun * (. args) (reduce _*_ 1 args))
 (defun ++ (. args) (reduce _++_ "" args))
@@ -40,4 +40,4 @@
 		   (if (nil? (cdr args)) (raise "one arg for %")
 		   (reduce _%_ (car args) (cdr args))
 		   )))
-
+(def < _<_)  ; temporary crutch

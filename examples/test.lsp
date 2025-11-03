@@ -1,6 +1,2 @@
-(def fact (dambda (n) (
-		if (_<_ n 2) 1
-		(_*_ n (fact (_-_ n 1)))
-	)))
-
-
+(defun selfactorial (self, n) (* n (if (< n 3) 1 (f f (- n 1)))))
+(defun factorial (n) (selfactorial selfactorial n))
