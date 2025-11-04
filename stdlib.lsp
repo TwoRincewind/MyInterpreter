@@ -78,3 +78,15 @@
 	      (three-op-eq type-a type-b "List") (_=_ (++ a) (++ b))
 	      (_=_ a b)))
 (defun = (. args) (bp-pre-core bineq args))
+
+
+(defun map (func lst)
+	(if (nil? lst) nil
+    (cons (func (car lst)) (map func (cdr lst)))))
+
+
+(defun prints (. args) (reduce (lambda (nothing arg) (print arg)) nil args))
+
+
+
+(prints "stdlib loaded" \n)

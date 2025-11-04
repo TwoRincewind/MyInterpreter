@@ -424,7 +424,6 @@ def repl():
         print(pref + f'Error: no such file "{path_stdlib}"')
     with open(path_stdlib, 'r', encoding='utf-8') as f:
         eval_local(f.read(), load=True)
-        print('stdlib loaded')
     strs = [':q :quit :exit exit quit', ':l :load']
     exiters, loaders = map(lambda s: s.split(), strs)
     prev, inp = '', ''
