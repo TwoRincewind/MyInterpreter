@@ -214,7 +214,7 @@ def eval_naive(v, e):
                         return eval_naive(eval_naive(get_elems(t, 1)[0], e), e)
                     case SF.TYPEOF:
                         a = eval_naive(get_elems(t, 1)[0], e)
-                        return 'List' if isList(a) else str(a.__class__.__name__)
+                        return 'List' if isList(a) else 'Symbol' if isSymbol(a) else str(a.__class__.__name__)
                     case SF.CONS:
                         a, b = get_elems(t, 2)
                         evaluated_b = eval_naive(b, e)
@@ -424,7 +424,7 @@ def repl():
         print(pref + f'Error: no such file "{path_stdlib}"')
     with open(path_stdlib, 'r', encoding='utf-8') as f:
         eval_local(f.read(), load=True)
-        print()
+        print('stdlib loaded')
     strs = [':q :quit :exit exit quit', ':l :load']
     exiters, loaders = map(lambda s: s.split(), strs)
     prev, inp = '', ''
