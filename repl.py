@@ -185,7 +185,7 @@ def binpred(op: BP, a, b):  # apply binary predicat
             case BP.EQ:
                 return a == b
     except Exception as e:
-        raise LispRuntimeError(f'cannot apply {show(op)} to {show(a)} and {show(b)}')
+        raise LispRuntimeError(f'cannot apply {show(op)} to {show(a)} and {show(b)}') from e
 
 
 def eval_naive(v, e):
@@ -462,5 +462,5 @@ def repl():
         print(show(eval_local(inp)))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     repl()
