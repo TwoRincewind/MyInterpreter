@@ -154,10 +154,59 @@
 	      (nil? lsts) nil
 	      (append (flatten (car lsts)) (flatten (cdr lsts)))))
 
-(defun dedupe (lst)
+(defun distinct (lst)
 	(if (nil? lst) nil
-	    (cons (car lst) (dedupe (filter (lambda (v) (!= v (car lst))) (cdr lst))))))
+	    (cons (car lst) (distinct (filter (lambda (v) (!= v (car lst))) (cdr lst))))))
 
+
+; (defn map-n (f . l)
+; 	(cond (nil? l) nil
+; 	      (any? nil? l) nil
+; 	      (cons (eval (cons f (map car 'l))) (eval (cons map-n (cons f (map cdr 'l)))))))
+
+
+(defmacro apply-1 (f args)
+  (eval (cons f args)))
+
+(defn map-n-core (f l)
+  (if (or (nil? l) (any? nil? l))
+    nil
+    (cons (apply-1 f (map car l))
+	        (map-n-core f (map cdr l)))))
+
+(defn map-n (f . l)
+    (map-n-core f l))
+
+
+(defn cond-append (u v) (if (or (= false u) (= false v)) false (append u v))) ;; append-revers
+
+(defn match-codegen (p v) ;; check-pattern
+  (def type-p (typeof p))
+  (cond (= type-p "Symbol") (if (= p '_) nil (list (list def p (list quote v))))  ;; TODO quote only lists
+        (= type-p "List")
+          (cond
+              (!= (typeof v) "List") false
+              (nil? p) (if (nil? v) nil false)
+              (= (car p) '.) (match-codegen (car (cdr p)) v)
+              (nil? v) false
+              (cond-append (match-codegen (car p) (car v))
+                           (match-codegen (cdr p) (cdr v))))
+        (= p v) nil
+        false))
+
+(defmacro when (c . body) (if c (eval (cons do 'body)) nil))
+
+(defn check-pattern? (p)
+  (def syms (filter (lambda (e) (and (= (typeof e) "Symbol") (!= e '_) (!= e '.))) (flatten p)))
+  (= syms (distinct syms) syms))
+
+(defn match-wrap (p v)
+  (when (not (check-pattern? p)) (raise (++ "bad pattern: " p)))
+  (def code (match-codegen p v))
+  (if (= code false) false
+  (cons do (append code '(true)))))
+
+(defmacro match (p v) (eval (match-wrap 'p v)))
 
 
 (defun prints (. args) (reduce (lambda (nothing arg) (print arg)) nil args))

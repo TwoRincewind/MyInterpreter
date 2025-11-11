@@ -400,14 +400,14 @@ def macro_expand(body, d):
 def repl():
     def eval_local(s, load=False):
         try:
-            res = ''
+            to_show = ''
             while s:  # parse every object
                 res, s = prs(s)
-                res = eval_naive(res, ENV)
+                to_show += show(eval_naive(res, ENV)) + ' '
                 # to_print = show(eval_naive(res, ENV))
                 # if not load:  # and to_print:
                 #     print(to_print)
-            return res
+            return to_show
         except LispError as e:
             while e:
                 print(e)
@@ -459,7 +459,7 @@ def repl():
                 eval_local(f.read(), load=True)
                 print()
             continue
-        print(show(eval_local(inp)))
+        print(eval_local(inp))
 
 
 if __name__ == '__main__':
