@@ -1,5 +1,5 @@
-(def endl "
-")
+; (def endl "
+; ")
 
 (def acc-class
   (lambda ()

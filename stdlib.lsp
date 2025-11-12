@@ -133,7 +133,7 @@
 	      (indexof-from elem (cdr lst) (+ 1 idx))))
 (defun indexof (elem lst) (indexof-from elem lst 0))
 
-(defun range (a b)
+(defun range (a b) ; [a b)
 	(if (< a b) (cons a (range (+ 1 a) b)) nil))
 
 (defun range-tail-core (a b acc)
@@ -201,7 +201,7 @@
   (= syms (distinct syms) syms))
 
 (defn match-wrap (p v)
-  (when (not (check-pattern? p)) (raise (++ "bad pattern: " p)))
+  ; (when (not (check-pattern? p)) (raise (++ "bad pattern: " p)))
   (def code (match-codegen p v))
   (if (= code false) false
   (cons do (append code '(true)))))
