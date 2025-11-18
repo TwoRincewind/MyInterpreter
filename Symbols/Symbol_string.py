@@ -9,6 +9,5 @@ def symname(sym: str) -> str:
 def symkey(sym: str) -> str:
     return sym
 
-
 def isSymbol(obj) -> bool:
-    return isinstance(obj, str) and obj and obj[0] == pref
+    return isinstance(obj, str) and obj != '' and obj[0] == pref
