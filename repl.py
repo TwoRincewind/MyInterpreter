@@ -9,6 +9,25 @@ from Tokens import symbol, symname, isSymbol, symkey
 from Tokens import ourEn, SF, BO, BP, Env, Lambda, Dambda, Macro
 
 
+class TR:
+    def __init__(self, f, *args, **kwargs):
+        self.f = f
+        self.args = args
+        self.kwargs = kwargs
+    def __call__(self):
+        return self.f(*self.args, **self.kwargs)
+        # ret = self
+        # while isinstance(ret, TR):
+            # ret = ret.f(*ret.args, **ret.kwargs)
+        # return ret
+    
+    @staticmethod
+    def eval(val):
+        while isinstance(val, TR):
+            val = val()
+        return val
+
+
 NIL = cons(None, None)
 ENV = Env(None)
 
@@ -32,7 +51,7 @@ def show(obj) -> str:
             obj = cdr(obj)
         return f'({s})'
     elif isSymbol(obj):
-        return symname(obj)
+        return symname(obj) # type: ignore
     elif isinstance(obj, str):
         return f'"{obj}"'
     elif isinstance(obj, ourEn):
@@ -140,6 +159,7 @@ def prs(s: str) -> tuple:
 
 EVAL_NIL = lambda: NIL
 repr_ast = lambda v: v if type(v) is str and not isSymbol(v) else show(v)
+TCO = True
 
 
 def get_elems(v, n):  # get all elements from list with length n
@@ -188,22 +208,22 @@ def binpred(op: BP, a, b):  # apply binary predicat
         raise LispRuntimeError(f'cannot apply {show(op)} to {show(a)} and {show(b)}') from e
 
 
-def eval_naive(v, e):
+def eval_naive(v, e, strict):#=True):
     if isSymbol(v):
         return e.get(v)
     elif isList(v):  # call car with cdr as args
         if v == NIL:
             return EVAL_NIL()
-        h = eval_naive(car(v), e)  # head
+        h = eval_naive(car(v), e, True)  # head
         t = cdr(v)  # tail
         try:
             if isinstance(h, BO):
                 a, b = get_elems(t, 2)
-                return binop(h, eval_naive(a, e), eval_naive(b, e))
+                return binop(h, eval_naive(a, e, True), eval_naive(b, e, True))
             elif isinstance(h, BP):
                 try:
                     a, b = get_elems(t, 2)
-                    return binpred(h, eval_naive(a, e), eval_naive(b, e))
+                    return binpred(h, eval_naive(a, e, True), eval_naive(b, e, True))
                 except LispSyntaxError as e:
                     raise LispSyntaxError(f'wrong args for BP: {show(v)}') from e
             elif isinstance(h, SF):
@@ -211,25 +231,25 @@ def eval_naive(v, e):
                     case SF.QUOTE:
                         return get_elems(t, 1)[0]
                     case SF.EVAL:
-                        return eval_naive(eval_naive(get_elems(t, 1)[0], e), e)
+                        return eval_naive(eval_naive(get_elems(t, 1)[0], e, True), e, strict)
                     case SF.TYPEOF:
-                        a = eval_naive(get_elems(t, 1)[0], e)
+                        a = eval_naive(get_elems(t, 1)[0], e, True)
                         return 'List' if isList(a) else 'Symbol' if isSymbol(a) else str(a.__class__.__name__)
                     case SF.CONS:
                         a, b = get_elems(t, 2)
-                        evaluated_b = eval_naive(b, e)
+                        evaluated_b = eval_naive(b, e, True)
                         if not isList(evaluated_b):
                             raise LispSyntaxError('cannot add element to non-list')
-                        return cons(eval_naive(a, e), evaluated_b)
+                        return cons(eval_naive(a, e, True), evaluated_b)
                     case SF.CAR:
-                        a = eval_naive(get_elems(t, 1)[0], e)
+                        a = eval_naive(get_elems(t, 1)[0], e, True)
                         if not isList(a):
                             return a  # config moment
                         if a == NIL:
                             raise LispSyntaxError("NIL's head???")  # config moment
                         return car(a)
                     case SF.CDR:
-                        a = eval_naive(get_elems(t, 1)[0], e)
+                        a = eval_naive(get_elems(t, 1)[0], e, True)
                         if not isList(a):
                             return NIL  # config moment
                         if a == NIL:
@@ -237,39 +257,43 @@ def eval_naive(v, e):
                         return cdr(a)
                     case SF.IF:
                         a, b, c = get_elems(t, 3)  # a ? b : c
-                        evaled_a = eval_naive(a, e)
+                        evaled_a = eval_naive(a, e, True)
                         if type(evaled_a) is bool:
-                            return eval_naive(b, e) if evaled_a else eval_naive(c, e)
+                            return eval_naive(b, e, strict) if evaled_a else eval_naive(c, e, strict)
                         raise LispSyntaxError(f'not boolean {a} in {show(v)}')  # TODO
                     case SF.DO:
                         ev = NIL
                         while not t == NIL:
-                            ev = eval_naive(car(t), e)
+                            ev = eval_naive(car(t), e, strict)
                             t = cdr(t)
                         return ev
                     case SF.PRINT:
-                        a = eval_naive(get_elems(t, 1)[0], e)
-                        print(repr_ast(a), end='')
+                        a = eval_naive(get_elems(t, 1)[0], e, True)
+                        msg = repr_ast(a)
+                        # if '\n' in msg:
+                            # print(msg, end='', flush=True)
+                        # else:
+                        print(msg, end='')
                         return NIL
                     case SF.READ:
                         get_elems(t, 0)
                         s = input('\nreading: ')
                         return prs(s)[0]
                     case SF.SYMBOL:
-                        a = eval_naive(get_elems(t, 1)[0], e)
+                        a = eval_naive(get_elems(t, 1)[0], e, True)
                         if not isinstance(a, str):
                             raise LispSyntaxError('cannot make symbol from non-string')
                         return symbol(a)
                     case SF.DEF:
                         a, b = get_elems(t, 2)
                         if isSymbol(a):
-                            e.add(a, eval_naive(b, e))
+                            e.add(a, eval_naive(b, e, True))
                             return NIL
                         raise LispSyntaxError('cannot define non-symbol')
                     case SF.SET:
                         a, b = get_elems(t, 2)
                         if isSymbol(a):
-                            e.set(a, eval_naive(b, e))
+                            e.set(a, eval_naive(b, e, True))
                             return NIL
                         raise LispSyntaxError('cannot set non-Symbol')
                     case SF.LAMBDA:
@@ -288,7 +312,7 @@ def eval_naive(v, e):
                             return Macro(a, b)
                         raise LispSyntaxError(f'wrong args form for macro: {show(a)}')
                     case SF.RAISE:
-                        cause = eval_naive(get_elems(t, 1)[0], e)
+                        cause = eval_naive(get_elems(t, 1)[0], e, True)
                         raise LispRuntimeError(repr_ast(cause))
                     case _:
                         raise LispSyntaxError
@@ -305,7 +329,7 @@ def eval_naive(v, e):
                         ca = get_elems(a, 2)[1]
                         arr = []
                         while t != NIL:
-                            arr.append(eval_naive(car(t), e))
+                            arr.append(eval_naive(car(t), e, True))
                             t = cdr(t)
                         arg = NIL
                         for elem in reversed(arr):
@@ -314,7 +338,7 @@ def eval_naive(v, e):
                     else:
                         if t == NIL:
                             break
-                        arg = eval_naive(car(t), e)
+                        arg = eval_naive(car(t), e, True)
                         a = cdr(a)
                         t = cdr(t)
                     lambda_e.add(ca, arg)
@@ -322,7 +346,10 @@ def eval_naive(v, e):
                     raise LispSyntaxError(f'extra args {show(t)}\nfor not variable lambda {show(h)}')
                 if a != NIL:
                     return Lambda(a, h.body, lambda_e)
-                return eval_naive(h.body, lambda_e)
+                if not TCO:
+                    return eval_naive(h.body, lambda_e, True)
+                ret = TR(eval_naive, h.body, lambda_e, False)
+                return TR.eval(ret) if strict else ret 
             elif isinstance(h, Dambda):
                 dambda_e = Env(parent=e)
                 a = h.args
@@ -336,7 +363,7 @@ def eval_naive(v, e):
                         ca = get_elems(a, 2)[1]
                         arr = []
                         while t != NIL:
-                            arr.append(eval_naive(car(t), e))
+                            arr.append(eval_naive(car(t), e, True))
                             t = cdr(t)
                         arg = NIL
                         for elem in reversed(arr):
@@ -345,7 +372,7 @@ def eval_naive(v, e):
                     else:
                         if t == NIL:
                             break
-                        arg = eval_naive(car(t), e)
+                        arg = eval_naive(car(t), e, True)
                         a = cdr(a)
                         t = cdr(t)
                     dambda_e.add(ca, arg)
@@ -353,7 +380,10 @@ def eval_naive(v, e):
                     raise LispSyntaxError(f'extra args {show(t)}\nfor not variable lambda {show(h)}')
                 if a != NIL:
                     return Lambda(a, h.body, dambda_e)
-                return eval_naive(h.body, dambda_e)
+                if not TCO:
+                    return eval_naive(h.body, dambda_e, True)
+                ret = TR(eval_naive, h.body, dambda_e, False)
+                return TR.eval(ret) if strict else ret 
             elif isinstance(h, Macro):
                 d = dict()
                 a = h.args
@@ -378,7 +408,10 @@ def eval_naive(v, e):
                 expanded = macro_expand(h.body, d)
                 if a != NIL:
                     return Macro(a, expanded)
-                return eval_naive(expanded, e)
+                if not TCO:
+                    ret = eval_naive(expanded, e, True)
+                ret = TR(eval_naive, expanded, e, False)
+                return TR.eval(ret) if strict else ret
         except LispError as e:
             raise LispSyntaxError(f'wrong args for {show(h)}: {show(cdr(v))}') from e
         raise LispTypeError(f'wrong head form: {repr_ast(h)}')
@@ -403,16 +436,18 @@ def repl():
             to_show = ''
             while s:  # parse every object
                 res, s = prs(s)
-                to_show += show(eval_naive(res, ENV)) + ' '
+                to_show += show(eval_naive(res, ENV, True)) + ' '
                 # to_print = show(eval_naive(res, ENV))
                 # if not load:  # and to_print:
                 #     print(to_print)
             return to_show
         except LispError as e:
-            while e:
-                print(e)
+            while e.__cause__ and isinstance(e.__cause__, LispError):
                 e = e.__cause__
                 # \ if e.__cause__ is not None else e.__context__
+            print(e)
+        except KeyboardInterrupt:
+            return "interrupted\n"
         except Exception as e:
             print_exception(e)
 
@@ -435,7 +470,7 @@ def repl():
         prev = inp
         try:
             inp = input(pref).strip()
-        except KeyboardInterrupt:
+        except KeyboardInterrupt or EOFError:
             print(suf)
             break
         if not inp:
