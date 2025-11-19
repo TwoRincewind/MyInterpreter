@@ -159,7 +159,7 @@ def prs(s: str) -> tuple:
 
 EVAL_NIL = lambda: NIL
 repr_ast = lambda v: v if type(v) is str and not isSymbol(v) else show(v)
-TCO = True
+TCO = False
 
 
 def get_elems(v, n):  # get all elements from list with length n
@@ -262,18 +262,18 @@ def eval_naive(v, e, strict):#=True):
                             return eval_naive(b, e, strict) if evaled_a else eval_naive(c, e, strict)
                         raise LispSyntaxError(f'not boolean {a} in {show(v)}')  # TODO
                     case SF.DO:
+                        if t == NIL:
+                            return NIL
                         ev = NIL
-                        while not t == NIL:
-                            ev = eval_naive(car(t), e, strict)
+                        while cdr(t) != NIL:
+                            ev = eval_naive(car(t), e, True)
                             t = cdr(t)
-                        return ev
+                        return eval_naive(car(t), e, strict)
                     case SF.PRINT:
-                        a = eval_naive(get_elems(t, 1)[0], e, True)
-                        msg = repr_ast(a)
-                        # if '\n' in msg:
-                            # print(msg, end='', flush=True)
-                        # else:
-                        print(msg, end='')
+                        print(repr_ast(eval_naive(get_elems(t, 1)[0], e, True)), end='')
+                        return NIL
+                    case SF.FLUSH:
+                        print(end='', flush=True)
                         return NIL
                     case SF.READ:
                         get_elems(t, 0)

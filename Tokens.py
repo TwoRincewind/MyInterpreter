@@ -4,9 +4,6 @@ from Symbols.Symbol_string import symbol, symname, isSymbol, symkey
 
 
 class Env:
-    frame: dict = ...
-    parent = ...
-
     def __init__(self, parent):
         self.frame = dict()
         self.parent = parent
@@ -78,6 +75,7 @@ class SF(ourEn): # special form
     IF = 'if'
     DO = 'do'
     PRINT = 'print'
+    FLUSH = 'flush'
     READ = 'read'
     SYMBOL = 'symbol'  # stateless calc
     DEF = 'def'
