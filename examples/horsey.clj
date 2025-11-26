@@ -11,27 +11,8 @@
 ;; Сделать так, чтобы код работал для доски 8x8
 ;; Необходимо сделать Tail Call Optimization 
 
-(defn < (. xs)
-    (if (nil? xs)
-      true
-      (bp-core _<_ (car xs) (cdr xs))))
-(defn > (a . xs)
-    (if (nil? xs)
-        true
-        (bp-core _>_ a xs)))
-(defn _<=_ (a b) (if (_<_ a b) true (_=_ a b)))
-(defn <= (a . xs)
-    (if (nil? xs)
-        true
-        (bp-core _<=_ a xs)))
-(defn _>=_ (a b) (if (_>_ a b) true (_=_ a b)))
-(defn >= (a . xs)
-    (if (nil? xs)
-        true
-        (bp-core _>=_ a xs)))
-
-(def n 6)
 (def m 6)
+(def n 6)
 (def nm (* n m))
 (def start-position '(1 1))
 
@@ -108,28 +89,28 @@
 
 (defn dfs-tail (path stack)
     ;; (print path)
-    (cond 
+    (if
         ; success
-        (path-isgood? path) path 
+        (path-isgood? path) path (if
         ; если мы выше начала - нет решения
-        (nil? path) false 
+        (nil? path) false (if
         ; если некуда ходить из текущей позиции
         (nil? (car stack)) (do
-                                (when (not (nil? (cdr path))) ((steps-set 'remove) (take 2 path)))
+                                (if (not (nil? (cdr path))) ((steps-set 'remove) (take 2 path)) nil)
                                 ((cells-multiset 'remove) (car path))
                                 (dfs-tail (cdr path) (cdr stack)))
         ; иначе нам есть что делать
         (do (def next-pos (zip-with + (car path) (car (car stack))))
             (def step (list next-pos (car path)))
             (def new-stack (cons (cdr (car stack)) (cdr stack)))
-            (cond
+            (if
                 ; если мы резко оказались вне доски
-                (not (in-borders? next-pos)) (dfs-tail path new-stack)
+                (not (in-borders? next-pos)) (dfs-tail path new-stack) (if
                 ; если этот ход мы уже делали
                 (step-was? step) (dfs-tail path new-stack)
                 (do
                     ((steps-set 'add) step)
                     ((cells-multiset 'add) next-pos)
-                    (dfs-tail (cons next-pos path) (cons all-dirs new-stack)))))))
+                    (dfs-tail (cons next-pos path) (cons all-dirs new-stack))))))))))
 
 (print (dfs-tail (list start-position) (list all-dirs)))

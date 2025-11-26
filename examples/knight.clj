@@ -1,28 +1,6 @@
-
-(defn < (. xs)
-  (if (nil? xs)
-      true
-      (bp-core _<_ (car xs) (cdr xs))))
-(defn > (a . xs)
-  (if (nil? xs)
-      true
-      (bp-core _>_ a xs)))
-(defn _<=_ (a b) (if (_<_ a b) true (_=_ a b)))
-(defn <= (a . xs)
-  (if (nil? xs)
-      true
-      (bp-core _<=_ a xs)))
-(defn _>=_ (a b) (if (_>_ a b) true (_=_ a b)))
-(defn >= (a . xs)
-  (if (nil? xs)
-      true
-      (bp-core _>=_ a xs)))
-
-
-
 (def n 5)
 (def m 4)
-    (def start-position '(1 1))
+(def start-position '(1 1))
 
 ;; path - '((1 1) (4 2) (0 0))
 
@@ -39,17 +17,15 @@
          (range 1 (+ 1 n)))))
 
 
-(def zzz (concat (map (lambda (cell)
+(def all-moves (concat (map (lambda (cell)
                       (filter (lambda (step) (check-pos? (car step)))
                               (map (lambda (delta-move) (list (zip-with + cell delta-move) cell))
                                    knight-moves)))
     all-cells)))
 
-(def yyy (cons do (map (lambda (step) (list def (symbol (++ step)) false)) zzz)))
-
 
 (defn steps-set-gen ()
-  (eval yyy)
+  (eval (cons do (map (lambda (step) (list def (symbol (++ step)) false)) all-moves)))
   (defn add (x) (eval (list set! (symbol (++ x)) true)))
   (defn has? (x) (eval (symbol (++ x))))
   (defn remove (x) (eval (list set! (symbol (++ x)) false)))
@@ -60,17 +36,11 @@
 
 (defn check-step? (step path) (not ((steps-set 'has?) step)))
 
-;; (defn check-step? (step path)  ; '(to from)
-;;   (cond (or (nil? path) (nil? (cdr path))) true
-;;         (= (take 2 path) step) false
-;;         (check-step? step (cdr path))))
-(def qqq (cons do (map (lambda (cell) (list def (symbol (++ cell)) 0)) all-cells)))
-
 (defmacro -= (x v) (set! x (- x v)))
 (defmacro += (x v) (set! x (+ x v)))
 
 (defn cells-multiset-gen ()
-  (eval qqq)
+  (eval (cons do (map (lambda (cell) (list def (symbol (++ cell)) 0)) all-cells)))
   (def distinct 0)
   (defn add (x) (do
                 (def name (symbol (++ x)))
@@ -89,7 +59,6 @@
 (defn dfs (path)
 ;; (def current-position (car path))
 ;;   (print path)
-;;   (if (and (= (car path) start-position) (= (length (distinct path)) (* n m)))
   (if (and (= (car path) start-position) (= (cells-multiset 'distinct) (* n m)))
       path
       (reduce (lambda (acc, x) 

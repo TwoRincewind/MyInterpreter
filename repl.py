@@ -159,7 +159,7 @@ def prs(s: str) -> tuple:
 
 EVAL_NIL = lambda: NIL
 repr_ast = lambda v: v if type(v) is str and not isSymbol(v) else show(v)
-TCO = False
+TCO = True
 
 
 def get_elems(v, n):  # get all elements from list with length n

@@ -65,8 +65,8 @@
 (defun <  (. args) (bp-pre-core _<_  args))
 (defun >  (. args) (bp-pre-core _>_  args))
 
-(defun _<=_ (a b) (if (not (_>_ a b))))
-(defun _>=_ (a b) (if (not (_<_ a b))))
+(defun _>=_ (a b) (not (_<_ a b)))
+(defun _<=_ (a b) (not (_>_ a b)))
 (defun <= (. args) (bp-pre-core _<=_ args))
 (defun >= (. args) (bp-pre-core _>=_ args))
 
